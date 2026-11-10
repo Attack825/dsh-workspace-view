@@ -14,29 +14,18 @@ DSH Web 客户端的全宽「工作区总览」插件：把工作区收进可自
 
 ## 安装
 
-### 1. 取得安装包
-
-版本号和安装包由 CI 管理，不需要本地 `npm pack`。向 `main` 推送符合 Conventional Commits 的提交（`feat:` 升 minor、`fix:` 升 patch，`docs:`/`chore:` 等不单独发版），`release` 工作流会先跑测试，再自动升版本、打 tag、执行 `npm pack`，并把生成的 tgz 挂到 [Releases](https://github.com/Attack825/dsh-workspace-view/releases)。
-
-到 Releases 下载最新的 `dsh-workspace-view-<version>.tgz` 即可。版本号由 CI 依据提交生成（首次发布为 `1.0.0`），不需要手动改 `package.json` 的 `version`。
-
-### 2. 装入 profile
+从 [Releases](https://github.com/Attack825/dsh-workspace-view/releases) 下载最新的 `dsh-workspace-view-<version>.tgz`，然后：
 
 ```bash
-# 用 Releases 里下载的包
 dsh plugin --profile web add ./dsh-workspace-view-<version>.tgz
 
-# 或者直接从 GitHub 安装（跟随 main）
+# 或者直接从 GitHub 安装
 dsh plugin --profile web add github:Attack825/dsh-workspace-view
 ```
 
-`dsh plugin --profile <name> <pnpm args>` 会把参数转发给该 profile 目录下的 pnpm；带 `dsh.bundle` 的包在安装后自动加入组合包列表。
+装完重启 `dsh web`（已开着的页面刷新一次），侧栏导航区会多出一行「工作区总览」。
 
-重启 `dsh web`（已开着的页面刷新一次）后，侧栏导航区会多出一行「工作区总览」，点开即是新页面。
-
-Desktop 客户端不走 npm CLI（`desktop` profile 由客户端自己管理），在「插件」页添加同一个包名或 GitHub 地址即可。
-
-本地改完代码想立刻试，可以自己 `npm pack` 一个包装进 profile；正式版本仍以 CI 产出的 tgz 为准。
+Desktop 客户端在「插件」页添加同一个包名或 GitHub 地址即可。
 
 ## 使用
 

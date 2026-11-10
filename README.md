@@ -18,13 +18,13 @@ DSH Web 客户端的全宽「工作区总览」插件：把工作区收进可自
 
 版本号和安装包由 CI 管理，不需要本地 `npm pack`。向 `main` 推送符合 Conventional Commits 的提交（`feat:` 升 minor、`fix:` 升 patch，`docs:`/`chore:` 等不单独发版），`release` 工作流会先跑测试，再自动升版本、打 tag、执行 `npm pack`，并把生成的 tgz 挂到 [Releases](https://github.com/Attack825/dsh-workspace-view/releases)。
 
-到 Releases 下载最新的 `dsh-workspace-view-<version>.tgz` 即可。
+到 Releases 下载最新的 `dsh-workspace-view-<version>.tgz` 即可。版本号由 CI 依据提交生成（首次发布为 `1.0.0`），不需要手动改 `package.json` 的 `version`。
 
 ### 2. 装入 profile
 
 ```bash
 # 用 Releases 里下载的包
-dsh plugin --profile web add ./dsh-workspace-view-0.2.0.tgz
+dsh plugin --profile web add ./dsh-workspace-view-<version>.tgz
 
 # 或者直接从 GitHub 安装（跟随 main）
 dsh plugin --profile web add github:Attack825/dsh-workspace-view

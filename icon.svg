@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Workspace overview">
+  <title>Workspace overview</title>
+  <g fill="none" stroke="#247bbf" stroke-width="2.4" stroke-linejoin="round">
+    <rect x="3.2" y="3.2" width="11" height="11" rx="2.6"/>
+    <rect x="17.8" y="3.2" width="11" height="11" rx="2.6"/>
+    <rect x="3.2" y="17.8" width="11" height="11" rx="2.6"/>
+    <path d="M17.8 20.4h11M17.8 26.4h7.2" stroke-linecap="round"/>
+  </g>
+</svg>

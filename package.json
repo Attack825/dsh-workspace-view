@@ -1,0 +1,54 @@
+{
+  "name": "dsh-workspace-view",
+  "version": "0.1.0",
+  "description": "A full-width workspace overview for the DSH Web client: recent activity across workspaces, user-made color-coded groups, and one-click session entry.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/state.test.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "workspace",
+    "overview",
+    "sidebar"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Attack825/dsh-workspace-view.git"
+  },
+  "homepage": "https://github.com/Attack825/dsh-workspace-view#readme",
+  "bugs": {
+    "url": "https://github.com/Attack825/dsh-workspace-view/issues"
+  },
+  "author": "Attack825",
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  }
+}

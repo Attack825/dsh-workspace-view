@@ -1,0 +1,8 @@
+# dsh-workspace-view bundle patch.
+#
+# 浏览器半身由 package.json 的 dsh.client 声明，并绑定在 name 为裸包名的这一行上；
+# Host 入口是空实现（没有服务、没有工具），这里只负责把这一行挂进 profile。
+- insert:
+    - id: dsh-workspace-view
+      name: 'dsh-workspace-view'
+      config: {}

@@ -2,7 +2,7 @@
 
 DSH Web 客户端的全宽「工作区总览」插件：把工作区收进可自建分组、带配色的卡片里，一眼看清每个项目最近在做什么，点会话就能直接进入。
 
-![工作区总览：最近活动与可折叠的分组](docs/assets/workspace-overview.png)
+![工作区总览：最近活动、分组卡片与组内会话](docs/assets/workspace-overview.png)
 
 ## 功能
 

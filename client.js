@@ -8,6 +8,7 @@ window.__ModuleLoader__.load({
     const NS = 'dshWorkspaceView'
     const PANEL_ID = 'dsh-workspace-view'
     const STORAGE_KEY = 'dsh-workspace-view/groups/v1'
+    const STATE_ENDPOINT = '/dsh-workspace-view/state'
     const RECENT_LIMIT = 5
     const CARD_SESSION_LIMIT = 3
 
@@ -317,7 +318,11 @@ window.__ModuleLoader__.load({
       return { ...state, collapsed: collapsed ? state.groups.map((group) => group.id) : [] }
     }
 
-    function loadGroupState() {
+    // ---------------------------------------------------------------------
+    // Layout storage: the Host is authoritative, localStorage is the cache
+    // ---------------------------------------------------------------------
+
+    function loadLocalGroupState() {
       try {
         const raw = window.localStorage.getItem(STORAGE_KEY)
         if (raw === null) return emptyGroupState()
@@ -327,11 +332,58 @@ window.__ModuleLoader__.load({
       }
     }
 
-    function saveGroupState(state) {
+    function saveLocalGroupState(state) {
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
       } catch (_error) {
         /* A full or blocked storage keeps the in-memory state; nothing to surface. */
+      }
+    }
+
+    function hostFetch() {
+      return typeof window !== 'undefined' && typeof window.fetch === 'function' ? window.fetch.bind(window) : undefined
+    }
+
+    /**
+     * Read the Host's layout.
+     * @returns `null` when the Host cannot be reached, otherwise whether it has a
+     * stored layout and that layout (empty when it has none).
+     */
+    async function fetchHostState() {
+      const call = hostFetch()
+      if (call === undefined) return null
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 2500)
+      try {
+        const response = await call(STATE_ENDPOINT, {
+          cache: 'no-store',
+          credentials: 'same-origin',
+          signal: controller.signal,
+        })
+        if (!response.ok) return null
+        const body = await response.json()
+        const value = body !== null && typeof body === 'object' ? body.state : null
+        return { present: value !== null && value !== undefined, state: normalizeGroupState(value) }
+      } catch (_error) {
+        return null
+      } finally {
+        clearTimeout(timer)
+      }
+    }
+
+    async function pushHostState(state) {
+      const call = hostFetch()
+      if (call === undefined) return false
+      try {
+        const response = await call(STATE_ENDPOINT, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(state),
+        })
+        return response.ok
+      } catch (_error) {
+        return false
       }
     }
 
@@ -918,20 +970,59 @@ window.__ModuleLoader__.load({
       const statuses = statusSnapshot instanceof Map ? statusSnapshot : new Map()
       const now = useNow()
 
-      const [groups, setGroups] = useState(loadGroupState)
+      const [groups, setGroups] = useState(loadLocalGroupState)
       const [query, setQuery] = useState('')
       const [expandedCards, setExpandedCards] = useState(() => new Set())
       const [dragging, setDragging] = useState(null)
       const [dropTarget, setDropTarget] = useState(undefined)
+      const syncTimer = useRef(null)
+      const hydrated = useRef(false)
+
+      const schedulePush = useCallback((state) => {
+        if (syncTimer.current !== null) clearTimeout(syncTimer.current)
+        syncTimer.current = setTimeout(() => {
+          syncTimer.current = null
+          void pushHostState(state)
+        }, 250)
+      }, [])
+
+      useEffect(() => {
+        let cancelled = false
+        void (async () => {
+          const host = await fetchHostState()
+          if (cancelled) return
+          if (host !== null) {
+            if (host.present) {
+              saveLocalGroupState(host.state)
+              setGroups(host.state)
+            } else {
+              const local = loadLocalGroupState()
+              // The Host has no layout yet: adopt this browser's so every client shares it.
+              if (local.groups.length > 0 || Object.keys(local.assignments).length > 0) {
+                void pushHostState(local)
+              }
+            }
+          }
+          hydrated.current = true
+        })()
+        return () => {
+          cancelled = true
+          if (syncTimer.current !== null) {
+            clearTimeout(syncTimer.current)
+            syncTimer.current = null
+          }
+        }
+      }, [])
 
       const mutate = useCallback((change) => {
         setGroups((previous) => {
           const next = change(previous)
           if (next === previous) return previous
-          saveGroupState(next)
+          saveLocalGroupState(next)
+          if (hydrated.current) schedulePush(next)
           return next
         })
-      }, [])
+      }, [schedulePush])
 
       const archived = useMemo(() => new Set(Array.isArray(workspaceSnapshot.archivedSessionIds) ? workspaceSnapshot.archivedSessionIds : []), [workspaceSnapshot.archivedSessionIds])
       const pinned = useMemo(() => new Set(Array.isArray(workspaceSnapshot.pinnedSessionIds) ? workspaceSnapshot.pinnedSessionIds : []), [workspaceSnapshot.pinnedSessionIds])

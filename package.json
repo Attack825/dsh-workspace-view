@@ -1,6 +1,6 @@
 {
   "name": "dsh-workspace-view",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A full-width workspace overview for the DSH Web client: recent activity across workspaces, user-made color-coded groups, and one-click session entry.",
   "type": "module",
   "main": "./index.js",

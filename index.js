@@ -12,6 +12,9 @@ import { dirname, join } from 'node:path'
 
 export const STATE_PATH = '/dsh-workspace-view/state'
 
+/** The route needs the HTTP carrier; wait for it instead of racing the loader. */
+export const inject = ['webServer']
+
 /** The layout is a few kilobytes; anything this large is not ours. */
 const BODY_LIMIT = 512 * 1024
 

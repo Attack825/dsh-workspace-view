@@ -26,6 +26,7 @@ const fakeReact = {
 const api = captured.factory(() => fakeReact)
 const {
   emptyGroupState,
+  preferLocalState,
   normalizeGroupState,
   createGroupState,
   renameGroup,
@@ -240,6 +241,22 @@ test('normalizeGroupState keeps explicit colors and fills missing or unknown one
     ],
   })
   assert.deepEqual(normalized.groups.map((group) => group.color), ['apricot', 'lake', 'jade'])
+})
+
+test('normalizeGroupState keeps a saved timestamp and defaults it to zero', () => {
+  assert.equal(normalizeGroupState({ version: 1, groups: [], assignments: {}, collapsed: [], savedAt: 1234 }).savedAt, 1234)
+  assert.equal(normalizeGroupState({ version: 1, groups: [] }).savedAt, 0)
+  assert.equal(normalizeGroupState({ version: 1, groups: [], savedAt: 'later' }).savedAt, 0)
+})
+
+test('preferLocalState picks the newer save, then the richer layout', () => {
+  const host = { ...emptyGroupState(), assignments: { w1: 'g1' } }
+  const local = { ...emptyGroupState(), groups: [{ id: 'g1', title: 'G', color: 'lake' }], assignments: { w1: 'g1', w2: 'g1' } }
+  assert.equal(preferLocalState(emptyGroupState(), host), false, 'an empty cache never wins')
+  assert.equal(preferLocalState({ ...local, savedAt: 20 }, { ...host, savedAt: 10 }), true)
+  assert.equal(preferLocalState({ ...local, savedAt: 10 }, { ...host, savedAt: 20 }), false)
+  assert.equal(preferLocalState({ ...local, savedAt: 0 }, { ...host, savedAt: 0 }), true, 'richer layout wins without timestamps')
+  assert.equal(preferLocalState({ ...host, savedAt: 0 }, { ...local, savedAt: 0 }), false)
 })
 
 test('sessionVisible hides subagents, blanks and archived sessions', () => {

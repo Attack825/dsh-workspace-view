@@ -214,7 +214,7 @@ type GroupState = {
 
 修订：
 
-- **Host 半身**注册一条同源路由 `GET/PUT /dsh-workspace-view/state`，把布局写到 `$DSH_HOME/dsh-workspace-view/groups.json`（临时文件 + rename 原子替换）。本机所有入口、所有浏览器共用这一份。
+- **Host 半身**注册一条同源路由 `GET/PUT /dsh-workspace-view/state`，把布局写到 `$DSH_HOME/dsh-workspace-view/groups.json`（临时文件 + rename 原子替换）。本机所有入口、所有浏览器共用这一份。Host 入口声明 `inject = ['webServer']`，等 HTTP 载体就绪后再 `register`，避免启动早于 webServer 时静默不挂路由。
 - **浏览器只作缓存**：启动时以 Host 为准；Host 还没有布局时，把本机 `localStorage` 里的旧布局迁移上去，老用户不丢分组。写入先落本地，250 ms 去抖后再 PUT。
 - **写入防线**：`version === 1` 校验、512 KB 上限、只接受同源写（`Origin` 的 host 必须等于 `Host`，跨源返回 403），`cache-control: no-store`。
 - **仍不做跨设备同步**：Host 是本机的，换一台电脑要重新分组；这是继续接受的取舍。

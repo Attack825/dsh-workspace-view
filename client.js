@@ -176,7 +176,7 @@ window.__ModuleLoader__.load({
     }
 
     function emptyGroupState() {
-      return { version: 1, groups: [], assignments: {}, collapsed: [] }
+      return { version: 1, groups: [], assignments: {}, collapsed: [], savedAt: 0 }
     }
 
     function isRecord(value) {
@@ -186,6 +186,7 @@ window.__ModuleLoader__.load({
     function normalizeGroupState(raw) {
       const next = emptyGroupState()
       if (!isRecord(raw) || raw.version !== 1) return next
+      if (typeof raw.savedAt === 'number' && Number.isFinite(raw.savedAt) && raw.savedAt > 0) next.savedAt = raw.savedAt
 
       const seenIds = new Set()
       const seenTitles = new Set()
@@ -342,6 +343,22 @@ window.__ModuleLoader__.load({
 
     function hostFetch() {
       return typeof window !== 'undefined' && typeof window.fetch === 'function' ? window.fetch.bind(window) : undefined
+    }
+
+    function layoutWeight(state) {
+      return state.groups.length * 1000 + Object.keys(state.assignments).length
+    }
+
+    /**
+     * Whether the browser cache should win over the Host copy: a newer save
+     * wins, and when neither side carries a timestamp the richer layout wins,
+     * so an offline stretch cannot erase groups that never reached the Host.
+     */
+    function preferLocalState(local, host) {
+      if (local.groups.length === 0 && Object.keys(local.assignments).length === 0) return false
+      if (local.savedAt > host.savedAt) return true
+      if (host.savedAt > local.savedAt) return false
+      return layoutWeight(local) > layoutWeight(host)
     }
 
     /**
@@ -993,8 +1010,17 @@ window.__ModuleLoader__.load({
           if (cancelled) return
           if (host !== null) {
             if (host.present) {
-              saveLocalGroupState(host.state)
-              setGroups(host.state)
+              const local = loadLocalGroupState()
+              // A newer or richer local layout wins, so a period without the
+              // route cannot silently replace groups that were never synced.
+              if (preferLocalState(local, host.state)) {
+                const stamped = { ...local, savedAt: Date.now() }
+                setGroups(stamped)
+                void pushHostState(stamped)
+              } else {
+                saveLocalGroupState(host.state)
+                setGroups(host.state)
+              }
             } else {
               const local = loadLocalGroupState()
               // The Host has no layout yet: adopt this browser's so every client shares it.
@@ -1018,9 +1044,10 @@ window.__ModuleLoader__.load({
         setGroups((previous) => {
           const next = change(previous)
           if (next === previous) return previous
-          saveLocalGroupState(next)
-          if (hydrated.current) schedulePush(next)
-          return next
+          const stamped = { ...next, savedAt: Date.now() }
+          saveLocalGroupState(stamped)
+          if (hydrated.current) schedulePush(stamped)
+          return stamped
         })
       }, [schedulePush])
 
@@ -1385,6 +1412,7 @@ window.__ModuleLoader__.load({
         workspaceName,
         shortPath,
         emptyGroupState,
+        preferLocalState,
         GROUP_COLORS,
         colorValue,
         nextGroupColor,

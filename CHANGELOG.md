@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/Attack825/dsh-workspace-view/compare/v1.1.0...v1.1.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* register the state route after the web server is ready ([fd1c40a](https://github.com/Attack825/dsh-workspace-view/commit/fd1c40a3bf75c427ee9aec72c1c82dc1653455a2))
+
 # [1.1.0](https://github.com/Attack825/dsh-workspace-view/compare/v1.0.0...v1.1.0) (2026-11-11)
 
 

@@ -72,8 +72,8 @@ const t = (key, values = {}) => {
     noSessions: '还没有会话',
     emptyTitle: '还没有工作区',
     emptyBody: '先在左侧栏添加工作区。',
-    pathMissing: '路径不存在',
-    pathMissingHint: '文件夹已不存在；历史会话仍可打开，但不能在这里新建会话',
+    pathMissing: '路径已修改',
+    pathMissingHint: '文件夹已移动或改名；历史会话仍可打开，但不能在这里新建会话',
     newSession: '新会话',
     newSessionBlocked: '路径不可用，无法新建会话',
     'time.now': '刚刚',
@@ -480,7 +480,7 @@ test('a missing workspace path shows the badge and blocks new sessions', () => {
     onDragEnd: () => {},
   })
   const text = renderedText(element)
-  assert.ok(text.includes('路径不存在'), 'badge text should render')
+  assert.ok(text.includes('路径已修改'), 'badge text should render')
   const disabled = findNodes(element, (node) => node.props?.disabled === true)
   assert.equal(disabled.length, 1, 'the new-session button should be the only disabled control')
   assert.equal(disabled[0].props.title, '路径不可用，无法新建会话')

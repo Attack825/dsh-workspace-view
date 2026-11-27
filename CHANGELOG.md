@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/Attack825/dsh-workspace-view/compare/v1.2.0...v1.2.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* rename the missing-path badge to path changed ([2c0336d](https://github.com/Attack825/dsh-workspace-view/commit/2c0336d7f2b62c2b618ecf0ce75d1b0347a030a0))
+
 # [1.2.0](https://github.com/Attack825/dsh-workspace-view/compare/v1.1.1...v1.2.0) (2026-11-27)
 
 

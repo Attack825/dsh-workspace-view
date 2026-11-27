@@ -9,6 +9,7 @@ window.__ModuleLoader__.load({
     const PANEL_ID = 'dsh-workspace-view'
     const STORAGE_KEY = 'dsh-workspace-view/groups/v1'
     const STATE_ENDPOINT = '/dsh-workspace-view/state'
+    const PROBE_ENDPOINT = '/dsh-workspace-view/probe'
     const RECENT_LIMIT = 5
     const CARD_SESSION_LIMIT = 3
 
@@ -59,6 +60,11 @@ window.__ModuleLoader__.load({
       'time.months': '{n} 个月前',
       'time.years': '{n} 年前',
       groupColor: '分组颜色',
+      pathMissing: '路径不存在',
+      pathUnreachable: '无法访问',
+      pathMissingHint: '文件夹已不存在；历史会话仍可打开，但不能在这里新建会话',
+      pathUnreachableHint: '暂时无法访问该文件夹（权限或磁盘）；历史会话仍可打开',
+      newSessionBlocked: '路径不可用，无法新建会话',
       'color.lake': '湖蓝',
       'color.jade': '翠绿',
       'color.citron': '柠黄',
@@ -114,6 +120,11 @@ window.__ModuleLoader__.load({
       'time.months': '{n} mo ago',
       'time.years': '{n} y ago',
       groupColor: 'Group color',
+      pathMissing: 'Path missing',
+      pathUnreachable: 'Unreachable',
+      pathMissingHint: 'The folder no longer exists; sessions still open, but no new session can start here',
+      pathUnreachableHint: 'The folder cannot be reached right now (permissions or disk); sessions still open',
+      newSessionBlocked: 'Path unavailable; cannot start a session',
       'color.lake': 'Lake',
       'color.jade': 'Jade',
       'color.citron': 'Citron',
@@ -404,6 +415,31 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /**
+     * Ask the Host which registered directories still exist.
+     * @returns `null` when the Host cannot answer (static preview, offline).
+     */
+    async function probeWorkspacePaths(paths) {
+      const call = hostFetch()
+      if (call === undefined || paths.length === 0) return null
+      try {
+        const response = await call(PROBE_ENDPOINT, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ paths }),
+        })
+        if (!response.ok) return null
+        const body = await response.json()
+        return {
+          missing: new Set(Array.isArray(body?.missing) ? body.missing : []),
+          unreachable: new Set(Array.isArray(body?.unreachable) ? body.unreachable : []),
+        }
+      } catch (_error) {
+        return null
+      }
+    }
+
     // ---------------------------------------------------------------------
     // Session / workspace projection helpers
     // ---------------------------------------------------------------------
@@ -587,7 +623,12 @@ window.__ModuleLoader__.load({
 .dwv-card-title-block{flex:1;min-width:0}
 .dwv-card-title{margin:0;font-size:14px;line-height:20px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dwv-card-path{margin:2px 0 0;font-size:12px;line-height:16px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dwv-card-meta{margin:0;font-size:12px;line-height:16px;color:var(--dsw-alias-label-secondary)}
+.dwv-card-meta{margin:0;font-size:12px;line-height:16px;color:var(--dsw-alias-label-secondary);display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.dwv-badge{display:inline-flex;align-items:center;padding:0 5px;height:16px;border-radius:4px;font-size:11px;line-height:16px;color:var(--dsw-alias-state-warn-primary);background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 12%,transparent)}
+.dwv-card-invalid{border-style:dashed}
+.dwv-card-invalid .dwv-card-title{color:var(--dsw-alias-label-secondary)}
+.dwv-icon-btn:disabled{opacity:.35;cursor:not-allowed}
+.dwv-icon-btn:disabled:hover{background:transparent;color:var(--dsw-alias-label-secondary)}
 .dwv-card-actions{display:flex;gap:0;flex:none;opacity:0}
 .dwv-card:hover .dwv-card-actions,.dwv-card:focus-within .dwv-card-actions,.dwv-menu-open .dwv-card-actions{opacity:1}
 .dwv-icon-btn{width:24px;height:24px;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;padding:0}
@@ -734,14 +775,16 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function WorkspaceCard({ entry, expanded, now, t, statuses, groups, currentGroupId, color, dragging, onOpenSession, onStartSession, onMove, onToggleExpand, onDragStart, onDragEnd }) {
+    function WorkspaceCard({ entry, expanded, now, t, statuses, groups, currentGroupId, color, dragging, pathState = 'ok', onOpenSession, onStartSession, onMove, onToggleExpand, onDragStart, onDragEnd }) {
       const card = entry.card
       const sessions = entry.allSessions ? entry.sessions : expanded ? card.sessions : card.sessions.slice(0, CARD_SESSION_LIMIT)
       const hidden = entry.allSessions ? 0 : Math.max(0, card.sessions.length - CARD_SESSION_LIMIT)
+      const blocked = pathState !== 'ok'
+      const badge = pathState === 'missing' ? t('pathMissing') : pathState === 'unreachable' ? t('pathUnreachable') : ''
       return h(
         'article',
         {
-          className: `dwv-card${color === undefined ? '' : ' dwv-card-tinted'}${dragging ? ' dwv-card-dragging' : ''}`,
+          className: `dwv-card${color === undefined ? '' : ' dwv-card-tinted'}${blocked ? ' dwv-card-invalid' : ''}${dragging ? ' dwv-card-dragging' : ''}`,
           style: color === undefined ? undefined : { '--dwv-color': colorValue(color) },
           draggable: true,
           onDragStart: (event) => onDragStart(event, card.workspaceId),
@@ -762,13 +805,27 @@ window.__ModuleLoader__.load({
             { className: 'dwv-card-actions' },
             h(
               'button',
-              { type: 'button', className: 'dwv-icon-btn', title: t('newSession'), 'aria-label': t('newSession'), onClick: () => onStartSession(card.workspaceId) },
+              {
+                type: 'button',
+                className: 'dwv-icon-btn',
+                title: blocked ? t('newSessionBlocked') : t('newSession'),
+                'aria-label': blocked ? t('newSessionBlocked') : t('newSession'),
+                disabled: blocked,
+                onClick: () => {
+                  if (!blocked) onStartSession(card.workspaceId)
+                },
+              },
               '＋',
             ),
             h(CardMenu, { card, groups, currentGroupId, t, onMove }),
           ),
         ),
-        h('p', { className: 'dwv-card-meta' }, `${relativeTime(card.lastActivity, now, t)} · ${t(card.count === 1 ? 'sessions.one' : 'sessions.other', { n: card.count })}`),
+        h(
+          'p',
+          { className: 'dwv-card-meta' },
+          `${relativeTime(card.lastActivity, now, t)} · ${t(card.count === 1 ? 'sessions.one' : 'sessions.other', { n: card.count })}`,
+          blocked ? h('span', { className: 'dwv-badge', title: pathState === 'missing' ? t('pathMissingHint') : t('pathUnreachableHint') }, badge) : null,
+        ),
         card.sessions.length === 0
           ? h('p', { className: 'dwv-card-meta' }, t('noSessions'))
           : h(
@@ -800,7 +857,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function GroupSection({ group, entries, collapsed, dropActive, now, t, statuses, groups, assignments, expandedCards, onToggleCollapse, onRename, onColor, onDelete, onMoveUp, onMoveDown, onOpenSession, onStartSession, onMoveWorkspace, onToggleExpand, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop, onGroupDragStart, canMoveUp, canMoveDown }) {
+    function GroupSection({ group, entries, collapsed, dropActive, now, t, statuses, groups, assignments, expandedCards, pathStateOf, onToggleCollapse, onRename, onColor, onDelete, onMoveUp, onMoveDown, onOpenSession, onStartSession, onMoveWorkspace, onToggleExpand, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop, onGroupDragStart, canMoveUp, canMoveDown }) {
       const [menuOpen, setMenuOpen] = useState(false)
       const [confirming, setConfirming] = useState(false)
       const [editing, setEditing] = useState(false)
@@ -966,6 +1023,7 @@ window.__ModuleLoader__.load({
                     groups,
                     currentGroupId: assignments[entry.card.workspaceId],
                     color: group.color,
+                    pathState: pathStateOf(entry.card.path),
                     dragging: false,
                     onOpenSession,
                     onStartSession,
@@ -992,6 +1050,7 @@ window.__ModuleLoader__.load({
       const [expandedCards, setExpandedCards] = useState(() => new Set())
       const [dragging, setDragging] = useState(null)
       const [dropTarget, setDropTarget] = useState(undefined)
+      const [pathHealth, setPathHealth] = useState(() => ({ missing: new Set(), unreachable: new Set() }))
       const syncTimer = useRef(null)
       const hydrated = useRef(false)
 
@@ -1039,6 +1098,31 @@ window.__ModuleLoader__.load({
           }
         }
       }, [])
+
+      const workspacePaths = useMemo(() => {
+        const set = new Set()
+        for (const workspace of Array.isArray(workspaceSnapshot.items) ? workspaceSnapshot.items : []) {
+          if (typeof workspace.path === 'string' && workspace.path !== '') set.add(workspace.path)
+        }
+        return [...set].sort()
+      }, [workspaceSnapshot.items])
+
+      useEffect(() => {
+        if (workspacePaths.length === 0) return undefined
+        let cancelled = false
+        void (async () => {
+          const health = await probeWorkspacePaths(workspacePaths)
+          if (!cancelled && health !== null) setPathHealth(health)
+        })()
+        return () => {
+          cancelled = true
+        }
+      }, [workspacePaths])
+
+      const pathStateOf = useCallback(
+        (path) => (pathHealth.missing.has(path) ? 'missing' : pathHealth.unreachable.has(path) ? 'unreachable' : 'ok'),
+        [pathHealth],
+      )
 
       const mutate = useCallback((change) => {
         setGroups((previous) => {
@@ -1165,6 +1249,7 @@ window.__ModuleLoader__.load({
           groups: groups.groups,
           currentGroupId: groups.assignments[entry.card.workspaceId],
           color: (groups.groups.find((group) => group.id === groups.assignments[entry.card.workspaceId]) ?? {}).color,
+          pathState: pathStateOf(entry.card.path),
           dragging: dragging !== null && dragging.kind === 'card' && dragging.id === entry.card.workspaceId,
           onOpenSession: openSession,
           onStartSession: startSession,
@@ -1283,6 +1368,7 @@ window.__ModuleLoader__.load({
                       groups: groups.groups,
                       assignments: groups.assignments,
                       expandedCards,
+                      pathStateOf,
                       onToggleCollapse: (groupId) => mutate((previous) => toggleCollapsed(previous, groupId)),
                       onRename: (groupId, title) => mutate((previous) => renameGroup(previous, groupId, title)),
                       onColor: (groupId, colorId) => mutate((previous) => setGroupColor(previous, groupId, colorId)),
@@ -1413,6 +1499,7 @@ window.__ModuleLoader__.load({
         shortPath,
         emptyGroupState,
         preferLocalState,
+        WorkspaceCard,
         GROUP_COLORS,
         colorValue,
         nextGroupColor,

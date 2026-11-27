@@ -27,6 +27,7 @@ const api = captured.factory(() => fakeReact)
 const {
   emptyGroupState,
   preferLocalState,
+  WorkspaceCard,
   normalizeGroupState,
   createGroupState,
   renameGroup,
@@ -71,6 +72,10 @@ const t = (key, values = {}) => {
     noSessions: '还没有会话',
     emptyTitle: '还没有工作区',
     emptyBody: '先在左侧栏添加工作区。',
+    pathMissing: '路径不存在',
+    pathMissingHint: '文件夹已不存在；历史会话仍可打开，但不能在这里新建会话',
+    newSession: '新会话',
+    newSessionBlocked: '路径不可用，无法新建会话',
     'time.now': '刚刚',
     'time.minutes': '{n} 分钟前',
     'time.hours': '{n} 小时前',
@@ -107,6 +112,18 @@ function renderedClasses(node, out = []) {
   if (typeof node.type === 'function') return renderedClasses(node.type(node.props), out)
   if (typeof node.props?.className === 'string') out.push(node.props.className)
   renderedClasses(node.props?.children ?? [], out)
+  return out
+}
+
+function findNodes(node, predicate, out = []) {
+  if (node === null || node === undefined || typeof node !== 'object') return out
+  if (Array.isArray(node)) {
+    for (const child of node) findNodes(child, predicate, out)
+    return out
+  }
+  if (typeof node.type === 'function') return findNodes(node.type(node.props), predicate, out)
+  if (predicate(node)) out.push(node)
+  findNodes(node.props?.children ?? [], predicate, out)
   return out
 }
 
@@ -436,4 +453,36 @@ test('the overview page survives a live-updated status map and empty workspaces'
   const element = OverviewPage(props)
   const text = renderedText(element)
   assert.ok(text.includes('还没有工作区'), 'empty state should render')
+})
+
+test('a missing workspace path shows the badge and blocks new sessions', () => {
+  const entry = {
+    card: { workspaceId: 'w1', title: 'dsh-trace-synopsis', path: 'D:\\gone', sessions: [], count: 0, lastActivity: 0 },
+    sessions: [],
+    allSessions: false,
+  }
+  const element = WorkspaceCard({
+    entry,
+    expanded: false,
+    now: Date.now(),
+    t,
+    statuses: new Map(),
+    groups: [],
+    currentGroupId: undefined,
+    color: undefined,
+    dragging: false,
+    pathState: 'missing',
+    onOpenSession: () => {},
+    onStartSession: () => {},
+    onMove: () => {},
+    onToggleExpand: () => {},
+    onDragStart: () => {},
+    onDragEnd: () => {},
+  })
+  const text = renderedText(element)
+  assert.ok(text.includes('路径不存在'), 'badge text should render')
+  const disabled = findNodes(element, (node) => node.props?.disabled === true)
+  assert.equal(disabled.length, 1, 'the new-session button should be the only disabled control')
+  assert.equal(disabled[0].props.title, '路径不可用，无法新建会话')
+  assert.ok(renderedClasses(element).some((name) => name.split(' ').includes('dwv-card-invalid')))
 })
